@@ -20,18 +20,13 @@ if (isset($_SESSION['usuario'])) {
 
     if (isset($_POST['importar'])) {
         move_uploaded_file($_FILES['fichero']['tmp_name'], "importar.csv");
-        $row = 1;
+        $row = 0;
         if (($handle = fopen("importar.csv", "r")) !== FALSE) {
-            while (($data = fgetcsv($handle, 1000, ",")) !== FALSE) {
-                $num = count($data);
-                //echo "<p> $num fields in line $row: <br /></p>\n";
+            while (($data = fgetcsv($handle, 1000, ";")) !== FALSE) {
+                if ($row > 0 && !$db->has("cuentas_bancarias_det", ["AND" => ["cuenta" => $_POST['cuenta'], "fecha" => $data[0]]])) {
+                    $db->insert("cuentas_bancarias_det", ["cuenta" => $_POST['cuenta'], "importe" => str_replace(",", ".", $data[5]), "fecha" => $data[0]]);
+                }
                 $row++;
-                for ($c = 0; $c < $num; $c++) {
-                    //echo $data[$c] . "<br />\n";
-                }
-                if (!$db->has("cuentas_bancarias_det", ["AND" => ["cuenta" => $_POST['cuenta'], "fecha" => $data[0]]])) {
-                    $db->insert("cuentas_bancarias_det", ["cuenta" => $_POST['cuenta'], "importe" => str_replace(",", ".", $data[1]), "fecha" => $data[0]]);
-                }
             }
             fclose($handle);
         }
@@ -42,10 +37,17 @@ if (isset($_SESSION['usuario'])) {
     foreach ($cuentas as $key => $cuenta) {
         $importe = $db->select("cuentas_bancarias_det", ["importe"], ["cuenta" => $cuenta['id'], "ORDER" => ["fecha" => "DESC", "importe" => "DESC"], "LIMIT" => 1]);
         $historico = $db->select("cuentas_bancarias_det", ["fecha", "importe"], ["cuenta" => $cuenta['id'], "ORDER" => ["fecha" => "ASC"]]);
-        $cuentas[$key]["importe"] = intval($importe[0]['importe']);
+        if(count($importe) == 0) {
+            $cuentas[$key]["importe"] = 0;
+            $importe_total += 0;
+        } else {
+            $cuentas[$key]["importe"] = intval($importe[0]['importe']);
+            $importe_total += intval($importe[0]['importe']);
+        }
         $cuentas[$key]["historico"] = $historico;
-        $importe_total += intval($importe[0]['importe']);
     }
+
+
 } else {
     header('Location: index.php', true, 301);
     exit();
@@ -163,7 +165,8 @@ if (isset($_SESSION['usuario'])) {
                                     <div class="tab-content">
                                         <div class="tab-pane active" id="m_widget4_tab1_content">
                                             <div class="m-widget4 m-widget4--progress">
-                                                <?php foreach ($cuentas as $cuenta) { ?>
+                                                <?php foreach ($cuentas as $cuenta) {
+                                                    $porcentaje = $importe_total != 0 ? (($cuenta['importe'] / $importe_total) * 100) : 0; ?>
                                                     <div class="m-widget4__item">
                                                         <div class="m-widget4__info">
                                                             <span class="m-widget4__title">
@@ -186,7 +189,7 @@ if (isset($_SESSION['usuario'])) {
                                                                     <a href="#" id="editar-<?= $cuenta['id'] ?>" class="editar-cuenta txt-primary" data-cuenta="<?= $cuenta['id'] ?>"><i class=" fa fa-pencil"></i></a>
                                                                 </span>
                                                                 <div id="progress-<?= $cuenta['id'] ?>" class="progress m-progress--sm" style="display: flex;">
-                                                                    <div class="progress-bar m--bg-danger" role="progressbar" style="width: <?= (($cuenta['importe'] / $importe_total) * 100) ?>%;background-color:<?= $cuenta['color'] ?> !important;" aria-valuenow="<?= (($cuenta['importe'] / $importe_total) * 100) ?>" aria-valuemin="0" aria-valuemax="100"></div>
+                                                                    <div class="progress-bar m--bg-danger" role="progressbar" style="width: <?= $porcentaje ?>%;background-color:<?= $cuenta['color'] ?> !important;" aria-valuenow="<?= $porcentaje ?>" aria-valuemin="0" aria-valuemax="100"></div>
                                                                 </div>
                                                             </div>
                                                         </div>

@@ -1,6 +1,8 @@
 <?php
 session_start();
 
+$tabla_importacion = array();
+
 if (isset($_SESSION['usuario'])) {
     include 'assets/bbdd/conectar.php';
 
@@ -9,7 +11,6 @@ if (isset($_SESSION['usuario'])) {
         $row = 1;
         if (($handle = fopen("importar_" . $_SESSION['usuario'] . ".csv", "r")) !== FALSE) {
 
-            $tabla_importacion = array();
             $tipo_importacion = $_POST['tipo'];
 
             while (($data = fgetcsv($handle, 1000, ";")) !== FALSE) {
@@ -144,19 +145,25 @@ if (isset($_SESSION['usuario'])) {
         $gastos_com = $db->select("gastos", ["fecha", "importe", "familia"], ["fecha" => $imp['fecha']]);
         foreach ($gastos_com as $g) {
             $fam = $db->get("familias", ["nombre"], ["id" => $g['familia']]);
-            $datos[$imp['id']] .=  $fam['nombre'] . " - " . $g['importe'] . "\n";
+            if(isset($datos[$imp['id']])) {
+                $datos[$imp['id']] .=  $fam['nombre'] . " - " . $g['importe'] . "\n";
+            }
         }
 
         $gastos_priv = $db->select("gastos_privados", ["fecha", "importe", "familia"], ["usuario" => $_SESSION['usuario'], "fecha" => $imp['fecha']]);
         foreach ($gastos_priv as $g) {
             $fam = $db->get("familias_privadas", ["nombre"], ["id" => $g['familia']]);
-            $datos[$imp['id']] .=  $fam['nombre'] . " - " . $g['importe'] . "\n";
+            if(isset($datos[$imp['id']])) {
+                $datos[$imp['id']] .=  $fam['nombre'] . " - " . $g['importe'] . "\n";
+            }
         }
 
         $ingresos = $db->select("ingresos", ["fecha", "importe", "familia"], ["usuario" => $_SESSION['usuario'], "fecha" => $imp['fecha']]);
         foreach ($ingresos as $g) {
             $fam = $db->get("familias_ingresos", ["nombre"], ["id" => $g['familia']]);
-            $datos[$imp['id']] .=  $fam['nombre'] . " - " . $g['importe'] . "\n";
+            if(isset($datos[$imp['id']])) {
+                $datos[$imp['id']] .=  $fam['nombre'] . " - " . $g['importe'] . "\n";
+            }
         }
     }
 
@@ -305,7 +312,7 @@ if (isset($_SESSION['usuario'])) {
                                                 echo '<input type="hidden" name="importe" value="' . $importe . '">';
                                                 echo '<input type="hidden" name="usuario" value="' . $_SESSION['usuario'] . '">';
                                                 echo '<tr>';
-                                                if ($datos[$imp['id']] != '') {
+                                                if (isset($datos[$imp['id']]) && $datos[$imp['id']] != '') {
                                                     echo '<td><button type="button" class="btn btn-secondary" data-container="body" data-toggle="popover" data-placement="top" data-content="' . $datos[$imp['id']] . '">' . $imp['fecha'] . '</button></td>';
                                                 } else {
                                                     echo '<td>' . $imp['fecha'] . '</td>';

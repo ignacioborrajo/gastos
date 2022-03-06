@@ -218,6 +218,8 @@ var BootstrapSelect = (function () {
       if (dif_nacho < 0) $("#gastos_nacho").addClass("m--font-danger");
       else $("#gastos_nacho").addClass("m--font-success");
 
+      debugger;
+
       $("#gasto_este_mes").text(
         data.total_este_mes.toFixed(2).toString() + "€"
       );

@@ -38,11 +38,11 @@ if (isset($_SESSION['usuario'])) {
         $gastos_com = $db->sum("gastos", "importe", ["usuario" => $_SESSION['usuario'], "fecha[>=]" => $fi, "fecha[<=]" => $ff]);
         $ingr = $db->sum("ingresos", "importe", ["usuario" => $_SESSION['usuario'], "fecha[>=]" => $fi, "fecha[<=]" => $ff]);
 
-        $arr_gpriv[] = round($gastos_priv, 2, PHP_ROUND_HALF_UP);
-        $arr_gcom[] = round($gastos_com, 2, PHP_ROUND_HALF_UP);
-        $arr_ingr[] = round($ingr, 2, PHP_ROUND_HALF_UP);
-        $arr_bene[] = round($ingr - ($gastos_priv + $gastos_com), 2, PHP_ROUND_HALF_UP);
-        $arr_gtot[] = round(($gastos_priv + $gastos_com), 2, PHP_ROUND_HALF_UP);
+        $arr_gpriv[] = round(floatval($gastos_priv), 2, PHP_ROUND_HALF_UP);
+        $arr_gcom[] = round(floatval($gastos_com), 2, PHP_ROUND_HALF_UP);
+        $arr_ingr[] = round(floatval($ingr), 2, PHP_ROUND_HALF_UP);
+        $arr_bene[] = round(floatval(floatval($ingr) - (floatval($gastos_priv) + floatval($gastos_com))), 2, PHP_ROUND_HALF_UP);
+        $arr_gtot[] = round(floatval($gastos_priv) + floatval($gastos_com), 2, PHP_ROUND_HALF_UP);
         $arr_cero[] = 0;
 
         $meses[] = $nombre_meses[intval($mes_inicio - 1)];

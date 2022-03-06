@@ -135,16 +135,12 @@ if (isset($_SESSION['usuario'])) {
                                                         <?php
                                                         $padre_actual = -1;
                                                         foreach ($familias as $familia) {
-                                                            if ($familia['padre'] == 0) {
-                                                                if ($familia['padre'] == $padre_actual) {
-                                                                    echo '</optgroup>';
-                                                                } else {
-                                                                    echo '<optgroup label="' . $familia['nombre'] . '" data-max-options="2">';
-                                                                }
-                                                                $padre_actual = $familia['id'];
-                                                            } else {
-                                                                echo '<option value="' . $familia['id'] . '" data-icon="' . $familia['icono'] . '" data-tokens="' . $familia['ticket'] . '">' . $familia['nombre'] . '</option>';
+                                                            echo '<optgroup label="' . $familia['nombre'] . '" data-max-options="2">';
+                                                            $hijas = $db->select("familias", ["id", "nombre", "icono", "padre", "ticket"], ["padre" => $familia['id']]);
+                                                            foreach ($hijas as $h) {
+                                                                echo '<option value="' . $h['id'] . '" data-icon="' . $h['icono'] . '" data-tokens="' . $h['ticket'] . '">' . $h['nombre'] . '</option>';
                                                             }
+                                                            echo '</optgroup>';
                                                         }
                                                         ?>
                                                     </select>

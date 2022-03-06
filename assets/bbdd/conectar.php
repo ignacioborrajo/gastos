@@ -6,9 +6,9 @@ use Medoo\Medoo;
 
 // Initialize nacho
 $db = new Medoo([
-    'database_type' => 'mysql',
-    'database_name' => 'gastos_nacho_nelly',
-    'server' => 'localhost',
+    'database_type' => 'mariadb',
+    'database_name' => 'portal_gastos',
+    'server' => 'db',
     'username' => 'root',
     'password' => 'Ruben2042',
     'charset' => 'utf8'
