@@ -17,14 +17,7 @@ if (isset($_SESSION['usuario'])) {
     }
 
     $familias = array();
-    $categorias = $db->select("familias_ingresos", ["id", "nombre", "icono", "padre", "ticket"], ["usuario" => $_SESSION['usuario'], "padre" => 0, "ORDER" => ["id" => "ASC"]]);
-    foreach ($categorias as $categoria) {
-        $familias[] = $categoria;
-        $familia = $db->select("familias_ingresos", ["id", "nombre", "icono", "padre", "ticket"], ["padre" => $categoria['id'], "ORDER" => ["id" => "ASC"]]);
-        foreach ($familia as $item) {
-            $familias[] = $item;
-        }
-    }
+    $familias = $db->select("familias_ingresos", ["id", "nombre", "icono", "padre", "ticket"], ["usuario" => $_SESSION['usuario'], "padre" => 0, "ORDER" => ["id" => "ASC"]]);
     
 } else {
     header('Location: index.php', true, 301);
@@ -143,16 +136,16 @@ if (isset($_SESSION['usuario'])) {
                                                         <select id="ingresos_picker" name="familia" class="form-control form-control-lg m-input m-bootstrap-select--pill m-bootstrap-select m_selectpicker" data-style="btn-danger btn-lg" title="Escoge un ingreso">
                                                             <?php
                                                             $padre_actual = -1;
-                                                            foreach ($familias as $familia) {
-                                                                if ($familia['padre'] == 0) {
-                                                                    if ($familia['padre'] == $padre_actual) {
-                                                                        echo '</optgroup>';
-                                                                    } else {
-                                                                        echo '<optgroup label="' . $familia['nombre'] . '" data-max-options="2">';
+                                                            foreach ($familias as $f) {
+                                                                $hijas = $db->select("familias_ingresos", ["id", "nombre", "icono", "padre", "ticket"], ["padre" => $f['id'], "ORDER" => ["nombre" => "ASC"]]);
+                                                                if(count($hijas) > 0) {
+                                                                    echo '<optgroup label="' . $f['nombre'] . '" data-max-options="2">';
+                                                                    foreach ($hijas as $key => $h) {
+                                                                        echo '<option value="' . $h['id'] . '" data-icon="' . $h['icono'] . '" data-tokens="' . $h['ticket'] . '">' . $h['nombre'] . '</option>';
                                                                     }
-                                                                    $padre_actual = $familia['id'];
+                                                                    echo '</optgroup>';
                                                                 } else {
-                                                                    echo '<option value="' . $familia['id'] . '" data-icon="' . $familia['icono'] . '" data-tokens="' . $familia['ticket'] . '">' . $familia['nombre'] . '</option>';
+                                                                    echo '<option value="' . $f['id'] . '" data-icon="' . $f['icono'] . '" data-tokens="' . $f['ticket'] . '">' . $f['nombre'] . '</option>';
                                                                 }
                                                             }
                                                             ?>

@@ -4,7 +4,7 @@ session_start();
 if (isset($_SESSION['usuario'])) {
     include 'assets/bbdd/conectar.php';
     $miembros = $db->select("usuarios", ["id", "nombre"]);
-    $familias = $db->select("familias", ["id", "nombre", "icono", "padre", "ticket"], ["ORDER" => ["id" => "ASC"]]);
+    $familias = $db->select("familias", ["id", "nombre", "icono", "padre", "ticket"], ["padre" => "0"], ["ORDER" => ["nombre" => "ASC"]]);
 } else {
     header('Location: index.php', true, 301);
     exit();
@@ -134,13 +134,17 @@ if (isset($_SESSION['usuario'])) {
                                                     <select id="gastos_picker" name="familia" class="form-control form-control-lg m-input m-bootstrap-select--pill m-bootstrap-select m_selectpicker" data-style="btn-danger btn-lg" title="Escoge un gasto">
                                                         <?php
                                                         $padre_actual = -1;
-                                                        foreach ($familias as $familia) {
-                                                            echo '<optgroup label="' . $familia['nombre'] . '" data-max-options="2">';
-                                                            $hijas = $db->select("familias", ["id", "nombre", "icono", "padre", "ticket"], ["padre" => $familia['id']]);
-                                                            foreach ($hijas as $h) {
-                                                                echo '<option value="' . $h['id'] . '" data-icon="' . $h['icono'] . '" data-tokens="' . $h['ticket'] . '">' . $h['nombre'] . '</option>';
+                                                        foreach ($familias as $f) {
+                                                            $hijas = $db->select("familias", ["id", "nombre", "icono", "padre", "ticket"], ["padre" => $f['id']], ["ORDER" => ["nombre" => "ASC"]]);
+                                                            if(count($hijas) > 0) {
+                                                                echo '<optgroup label="' . $f['nombre'] . '" data-max-options="2">';
+                                                                foreach ($hijas as $h) {
+                                                                    echo '<option value="' . $h['id'] . '" data-icon="' . $h['icono'] . '" data-tokens="' . $h['ticket'] . '">' . $h['nombre'] . '</option>';
+                                                                }
+                                                                echo '</optgroup>';
+                                                            } else {
+                                                                echo '<option value="' . $f['id'] . '" data-icon="' . $f['icono'] . '" data-tokens="' . $f['ticket'] . '">' . $f['nombre'] . '</option>';
                                                             }
-                                                            echo '</optgroup>';
                                                         }
                                                         ?>
                                                     </select>
