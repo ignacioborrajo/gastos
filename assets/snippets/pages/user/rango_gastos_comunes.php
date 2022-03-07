@@ -65,7 +65,11 @@ foreach($familias as $key=>$familia) {
 
         }
 
-        $total = $db->sum("gastos","importe",["AND"=>["familia"=>$subfamilia,"fecha[<>]"=>[date("Y-m-d",$i_inicio),date("Y-m-d",$i_fin)]]]);
+        if($subfamilia != null && count($subfamilia) > 0) {
+            $total = floatval($db->sum("gastos","importe",["AND"=>["familia"=>$subfamilia,"fecha[<>]"=>[date("Y-m-d",$i_inicio),date("Y-m-d",$i_fin)]]]));
+        } else {
+            $total = floatval($db->sum("gastos","importe",["AND"=>["familia"=>$familia['id'],"fecha[<>]"=>[date("Y-m-d",$i_inicio),date("Y-m-d",$i_fin)]]]));
+        }
         $data[] = round($total, 2);
         
         if($_GET['rango'] == 'anual') {

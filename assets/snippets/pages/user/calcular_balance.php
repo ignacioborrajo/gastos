@@ -4,8 +4,8 @@ include '../../../bbdd/conectar.php';
 
 $salida = "";
 
-$nacho_total = $db->sum("gastos","importe",["usuario"=>'1']);
-$nelly_total = $db->sum("gastos","importe",["usuario"=>'2']);
+$nacho_total = floatval($db->sum("gastos","importe",["usuario"=>'1']));
+$nelly_total = floatval($db->sum("gastos","importe",["usuario"=>'2']));
 
 $total = $nacho_total + $nelly_total;
 

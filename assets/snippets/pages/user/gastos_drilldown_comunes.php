@@ -31,7 +31,7 @@ if (isset($_POST['familia']) && $_POST['familia'] > 0) {
         } else {
             $gasto = $db->sum("gastos", "importe", ["AND" => ["fecha[<>]" => [$inicio, $fin], "familia" => $familia['id']]]);
         }
-        $pie_data["data"][] = array($familia['nombre'], round($gasto, 2));
+        $pie_data["data"][] = array($familia['nombre'], round(floatval($gasto), 2));
     }
 }
 

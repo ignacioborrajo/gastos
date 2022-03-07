@@ -38,9 +38,13 @@ foreach ($familias as $familia) {
     if ($_POST['solo_mios'] == 'S') {
         $gasto = $db->sum("gastos", "importe", ["AND" => ["fecha[<>]" => [$inicio, $fin], "usuario" => $_SESSION['usuario'], "familia" => $subfamilias]]);
     } else {
-        $gasto = $db->sum("gastos", "importe", ["AND" => ["fecha[<>]" => [$inicio, $fin], "familia" => $subfamilias]]);
+        if($subfamilias != null && count($subfamilias) > 0) {
+            $gasto = $db->sum("gastos", "importe", ["AND" => ["fecha[<>]" => [$inicio, $fin], "familia" => $subfamilias]]);
+        } else {
+            $gasto = $db->sum("gastos", "importe", ["AND" => ["fecha[<>]" => [$inicio, $fin], "familia" => $familia['id']]]);
+        }
     }
-    $pie_data[] = array("name" => $familia['nombre'], "y" => round($gasto, 2), "drilldown" => $familia['id']);
+    $pie_data[] = array("name" => $familia['nombre'], "y" => round(floatval($gasto), 2), "drilldown" => $familia['id']);
 }
 
 $salida = array("total" => $gasto_total, "total_este_mes" => $total_este_mes, "pie_data" => $pie_data, "inicio" => $inicio, "fin" => $fin);

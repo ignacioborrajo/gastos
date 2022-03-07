@@ -157,7 +157,6 @@ var BootstrapSelect = (function () {
   };
 
   var calcular_gastos_comunes = function () {
-    debugger;
     $.ajax({
       url: "assets/snippets/pages/user/calcular_gastos_comunes.php",
       method: "POST",
@@ -167,10 +166,8 @@ var BootstrapSelect = (function () {
         solo_mios: solo_mios,
       },
     }).done(function (data) {
-      $("#gasto_este_mes").text(
-        data.total_este_mes.toFixed(2).toString() + "€"
-      );
-      $("#gasto_total").text(data.total.toFixed(2).toString() + "€");
+      $("#gasto_este_mes").text(parseFloat(data.total_este_mes).toFixed(2).toString() + "€");
+      $("#gasto_total").text(parseFloat(data.total).toFixed(2).toString() + "€");
 
       cargarPieChart("N", data);
     });
@@ -220,10 +217,8 @@ var BootstrapSelect = (function () {
 
       debugger;
 
-      $("#gasto_este_mes").text(
-        data.total_este_mes.toFixed(2).toString() + "€"
-      );
-      $("#gasto_total").text(data.total.toFixed(2).toString() + "€");
+      $("#gasto_este_mes").text(parseFloat(data.total_este_mes).toFixed(2).toString() + "€");
+      $("#gasto_total").text(parseFloat(data.total).toFixed(2).toString() + "€");
 
       Highcharts.chart("grafico-balance", {
         chart: {

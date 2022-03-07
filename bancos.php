@@ -19,9 +19,9 @@ if (isset($_SESSION['usuario'])) {
     }
 
     if (isset($_POST['importar'])) {
-        move_uploaded_file($_FILES['fichero']['tmp_name'], "importar.csv");
+        move_uploaded_file($_FILES['fichero']['tmp_name'], "importar_" . $_SESSION['usuario'] . ".csv");
         $row = 0;
-        if (($handle = fopen("importar.csv", "r")) !== FALSE) {
+        if (($handle = fopen("importar_" . $_SESSION['usuario'] . ".csv", "r")) !== FALSE) {
             while (($data = fgetcsv($handle, 1000, ";")) !== FALSE) {
                 if ($row > 0 && !$db->has("cuentas_bancarias_det", ["AND" => ["cuenta" => $_POST['cuenta'], "fecha" => $data[0]]])) {
                     $db->insert("cuentas_bancarias_det", ["cuenta" => $_POST['cuenta'], "importe" => str_replace(",", ".", $data[5]), "fecha" => $data[0]]);
@@ -29,6 +29,50 @@ if (isset($_SESSION['usuario'])) {
                 $row++;
             }
             fclose($handle);
+        }
+        $row = 1;
+        if (($handle = fopen("importar_" . $_SESSION['usuario'] . ".csv", "r")) !== FALSE) {
+
+            $tipo_importacion = 'ABANCA';
+
+            while (($data = fgetcsv($handle, 1000, ";")) !== FALSE) {
+
+                if ($tipo_importacion == 'ABANCA' && $row == 1) {
+                    $row++;
+                    continue;
+                }
+
+                $num = count($data);
+
+                $row++;
+                for ($c = 0; $c < $num; $c++) {
+                    if ($tipo_importacion == 'ABANCA') {
+                        if ($c == 1) {
+                            $aux = explode("-", $data[$c]);
+                            $tabla_importacion[($row - 1)]['fecha'] = $aux[2] . "-" . $aux[1] . "-" . $aux[0];
+                        } else if ($c == 2) {
+                            $tabla_importacion[($row - 1)]['concepto'] = $data[$c];
+                        } else if ($c == 3) {
+                            $tabla_importacion[($row - 1)]['importe'] = str_replace(",", ".", $data[$c]);
+                        }
+                    }
+                }
+            }
+            fclose($handle);
+            $aux = $tabla_importacion;
+            foreach ($aux as $key => $fila) {
+                if ($db->has("importar", ["AND" => ["fecha" => $fila['fecha'], "concepto" => $fila['concepto']]])) {
+                    unset($tabla_importacion[$key]);
+                } else {
+                    $db->insert("importar", [
+                        "usuario" => $_SESSION['usuario'],
+                        "fecha" => $fila['fecha'],
+                        "concepto" => $fila['concepto'],
+                        "importe" => $fila['importe'],
+                        "importado" => 'N'
+                    ]);
+                }
+            }
         }
     }
 

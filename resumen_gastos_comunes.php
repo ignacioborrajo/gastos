@@ -504,7 +504,7 @@ if (isset($_SESSION['usuario'])) {
     <script src="https://code.highcharts.com/modules/data.js"></script>
     <script src="https://code.highcharts.com/modules/drilldown.js"></script>
     <!--begin::Page Snippets -->
-    <script src="assets/snippets/pages/user/resumen_gastos_comunes.js" type="text/javascript"></script>
+    <script src="assets/snippets/pages/user/resumen_gastos_comunes.js?t=<?=time()?>" type="text/javascript"></script>
     <!--end::Page Snippets -->
 </body>
 <!-- end::Body -->

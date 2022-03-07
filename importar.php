@@ -6,59 +6,13 @@ $tabla_importacion = array();
 if (isset($_SESSION['usuario'])) {
     include 'assets/bbdd/conectar.php';
 
-    if (isset($_POST['importar_fichero'])) {
-        move_uploaded_file($_FILES['fichero']['tmp_name'], "importar_" . $_SESSION['usuario'] . ".csv");
-        $row = 1;
-        if (($handle = fopen("importar_" . $_SESSION['usuario'] . ".csv", "r")) !== FALSE) {
-
-            $tipo_importacion = $_POST['tipo'];
-
-            while (($data = fgetcsv($handle, 1000, ";")) !== FALSE) {
-
-                if ($tipo_importacion == 'ABANCA' && $row == 1) {
-                    $row++;
-                    continue;
-                }
-
-                $num = count($data);
-
-                $row++;
-                for ($c = 0; $c < $num; $c++) {
-                    if ($tipo_importacion == 'ABANCA') {
-                        if ($c == 1) {
-                            $aux = explode("-", $data[$c]);
-                            $tabla_importacion[($row - 1)]['fecha'] = $aux[2] . "-" . $aux[1] . "-" . $aux[0];
-                        } else if ($c == 2) {
-                            $tabla_importacion[($row - 1)]['concepto'] = $data[$c];
-                        } else if ($c == 3) {
-                            $tabla_importacion[($row - 1)]['importe'] = str_replace(",", ".", $data[$c]);
-                        }
-                    }
-                }
-            }
-            fclose($handle);
-            $aux = $tabla_importacion;
-            foreach ($aux as $key => $fila) {
-                if ($db->has("importar", ["AND" => ["fecha" => $fila['fecha'], "concepto" => $fila['concepto']]])) {
-                    unset($tabla_importacion[$key]);
-                } else {
-                    $db->insert("importar", [
-                        "usuario" => $_SESSION['usuario'],
-                        "fecha" => $fila['fecha'],
-                        "concepto" => $fila['concepto'],
-                        "importe" => $fila['importe'],
-                        "importado" => 'N'
-                    ]);
-                }
-            }
-        }
-    }
-
-
     if (isset($_POST['importar']) && $_POST['importar'] != '') {
 
         $importado = false;
-
+        $gasto_com = null;
+        $gasto_priv = null;
+        $ingreso = null;
+        
         if ($_POST['gasto'] != '') {
             $db->insert("gastos", [
                 "usuario" => $_POST['usuario'],
@@ -168,33 +122,14 @@ if (isset($_SESSION['usuario'])) {
     }
 
     $familias_com = array();
-    $categorias = $db->select("familias", ["id", "nombre", "icono", "padre", "ticket"], ["padre" => 0, "ORDER" => ["id" => "ASC"]]);
-    foreach ($categorias as $categoria) {
-        $familias_com[] = $categoria;
-        $familia = $db->select("familias", ["id", "nombre", "icono", "padre", "ticket"], ["padre" => $categoria['id'], "ORDER" => ["id" => "ASC"]]);
-        foreach ($familia as $item) {
-            $familias_com[] = $item;
-        }
-    }
+    $familias_com = $db->select("familias", ["id", "nombre", "icono", "padre", "ticket"], ["padre" => 0, "ORDER" => ["nombre" => "ASC"]]);
+    
     $familias_priv = array();
-    $categorias = $db->select("familias_privadas", ["id", "nombre", "icono", "padre", "ticket"], ["usuario" => $_SESSION['usuario'], "padre" => 0, "ORDER" => ["id" => "ASC"]]);
-    foreach ($categorias as $categoria) {
-        $familias_priv[] = $categoria;
-        $familia = $db->select("familias_privadas", ["id", "nombre", "icono", "padre", "ticket"], ["padre" => $categoria['id'], "ORDER" => ["id" => "ASC"]]);
-        foreach ($familia as $item) {
-            $familias_priv[] = $item;
-        }
-    }
+    $familias_priv = $db->select("familias_privadas", ["id", "nombre", "icono", "padre", "ticket"], ["usuario" => $_SESSION['usuario'], "padre" => 0, "ORDER" => ["nombre" => "ASC"]]);
 
     $familias = array();
-    $categorias = $db->select("familias_ingresos", ["id", "nombre", "icono", "padre", "ticket"], ["usuario" => $_SESSION['usuario'], "padre" => 0, "ORDER" => ["id" => "ASC"]]);
-    foreach ($categorias as $categoria) {
-        $familias[] = $categoria;
-        $familia = $db->select("familias_ingresos", ["id", "nombre", "icono", "padre", "ticket"], ["padre" => $categoria['id'], "ORDER" => ["id" => "ASC"]]);
-        foreach ($familia as $item) {
-            $familias[] = $item;
-        }
-    }
+    $familias = $db->select("familias_ingresos", ["id", "nombre", "icono", "padre", "ticket"], ["usuario" => $_SESSION['usuario'], "padre" => 0, "ORDER" => ["nombre" => "ASC"]]);
+
 } else {
     header('Location: index.php', true, 301);
     exit();
@@ -265,170 +200,107 @@ if (isset($_SESSION['usuario'])) {
                                 Importar
                             </h3>
                         </div>
-                        <div>
-                            <ul class="nav nav-tabs  m-tabs-line m-tabs-line--primary" role="tablist">
-                                <li class="nav-item m-tabs__item">
-                                    <a class="nav-link m-tabs__link <?= (!isset($_POST['importar_fichero']) ? 'active' : '') ?>" data-toggle="tab" href="#m_tabs_3_1" role="tab">Pendientes</a>
-                                </li>
-                                <li class="nav-item m-tabs__item">
-                                    <a class="nav-link m-tabs__link <?= (isset($_POST['importar_fichero']) ? 'active' : '') ?>" data-toggle="tab" href="#m_tabs_3_3" role="tab">Importar</a>
-                                </li>
-                            </ul>
-                        </div>
                     </div>
                 </div>
                 <!-- END: Subheader -->
                 <div class="m-content">
-                    <div class="tab-content">
-                        <div class="tab-pane <?= (!isset($_POST['importar_fichero']) ? 'active' : '') ?>" id="m_tabs_3_1" role="tabpanel">
+                    <div class="row">
+                        <div class="col-md-12">
+                            <table class="table table-striped">
+                                <thead>
+                                    <tr>
+                                        <th>Fecha</th>
+                                        <th>Concepto</th>
+                                        <th>Importe</th>
+                                        <th>Descripción</th>
+                                        <th>Gasto</th>
+                                        <th>Gasto Privado</th>
+                                        <th>Ingreso</th>
+                                        <th></th>
+                                        <th></th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <?php
+                                    foreach ($no_importadas as $imp) {
+                                        if (floatval($imp['importe']) < 0) {
+                                            $importe = floatval($imp['importe']) * (-1);
+                                        } else {
+                                            $importe = floatval($imp['importe']);
+                                        }
+                                        echo '<form method="POST">';
+                                        echo '<input type="hidden" name="importar" value="' . $imp['id'] . '">';
+                                        echo '<input type="hidden" name="fecha" value="' . $imp['fecha'] . '">';
+                                        echo '<input type="hidden" name="importe" value="' . $importe . '">';
+                                        echo '<input type="hidden" name="usuario" value="' . $_SESSION['usuario'] . '">';
+                                        echo '<tr>';
+                                        if (isset($datos[$imp['id']]) && $datos[$imp['id']] != '') {
+                                            echo '<td><button type="button" class="btn btn-secondary" data-container="body" data-toggle="popover" data-placement="top" data-content="' . $datos[$imp['id']] . '">' . $imp['fecha'] . '</button></td>';
+                                        } else {
+                                            echo '<td>' . $imp['fecha'] . '</td>';
+                                        }
 
-                            <div class="row">
-                                <div class="col-md-12">
-                                    <table class="table table-striped">
-                                        <thead>
-                                            <tr>
-                                                <th>Fecha</th>
-                                                <th>Concepto</th>
-                                                <th>Importe</th>
-                                                <th>Descripción</th>
-                                                <th>Gasto</th>
-                                                <th>Gasto Privado</th>
-                                                <th>Ingreso</th>
-                                                <th></th>
-                                                <th></th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            <?php
-                                            foreach ($no_importadas as $imp) {
-                                                if (floatval($imp['importe']) < 0) {
-                                                    $importe = floatval($imp['importe']) * (-1);
-                                                } else {
-                                                    $importe = floatval($imp['importe']);
+                                        echo '<td>' . $imp['concepto'] . '</td>';
+                                        echo '<td>' . $imp['importe'] . '</td>';
+                                        echo '<td><input type="text" name="descripcion"></td>';
+                                        echo '<td>';
+                                        echo '<select id="ingresos_picker" name="gasto" class="form-control form-control-sm">';
+                                        echo '<option value="">Escoger</option>';
+                                        foreach ($familias_com as $f) {
+                                            $hijas = $db->select("familias", ["id", "nombre", "icono", "padre", "ticket"], ["padre" => $f['id'], "ORDER" => ["id" => "ASC"]]);
+                                            if(count($hijas) > 0) {
+                                                echo '<optgroup label="' . $f['nombre'] . '" data-max-options="2">';
+                                                foreach ($hijas as $key => $h) {
+                                                    echo '<option value="' . $h['id'] . '" data-icon="' . $h['icono'] . '" data-tokens="' . $h['ticket'] . '">' . $h['nombre'] . '</option>';
                                                 }
-                                                echo '<form method="POST">';
-                                                echo '<input type="hidden" name="importar" value="' . $imp['id'] . '">';
-                                                echo '<input type="hidden" name="fecha" value="' . $imp['fecha'] . '">';
-                                                echo '<input type="hidden" name="importe" value="' . $importe . '">';
-                                                echo '<input type="hidden" name="usuario" value="' . $_SESSION['usuario'] . '">';
-                                                echo '<tr>';
-                                                if (isset($datos[$imp['id']]) && $datos[$imp['id']] != '') {
-                                                    echo '<td><button type="button" class="btn btn-secondary" data-container="body" data-toggle="popover" data-placement="top" data-content="' . $datos[$imp['id']] . '">' . $imp['fecha'] . '</button></td>';
-                                                } else {
-                                                    echo '<td>' . $imp['fecha'] . '</td>';
-                                                }
-
-                                                echo '<td>' . $imp['concepto'] . '</td>';
-                                                echo '<td>' . $imp['importe'] . '</td>';
-                                                echo '<td><input type="text" name="descripcion"></td>';
-                                                echo '<td>';
-                                                echo '<select id="ingresos_picker" name="gasto" class="form-control form-control-sm">';
-                                                echo '<option value="">Escoger</option>';
-                                                $padre_actual = -1;
-                                                foreach ($familias_com as $familia) {
-                                                    if ($familia['padre'] == 0) {
-                                                        if ($familia['padre'] == $padre_actual) {
-                                                            echo '</optgroup>';
-                                                        } else {
-                                                            echo '<optgroup label="' . $familia['nombre'] . '" data-max-options="2">';
-                                                        }
-                                                        $padre_actual = $familia['id'];
-                                                    } else {
-                                                        echo '<option value="' . $familia['id'] . '" data-icon="' . $familia['icono'] . '" data-tokens="' . $familia['ticket'] . '">' . $familia['nombre'] . '</option>';
-                                                    }
-                                                }
-                                                echo '</td>';
-                                                echo '<td>';
-                                                echo '<select id="ingresos_picker" name="gasto_priv" class="form-control form-control-sm">';
-                                                echo '<option value="">Escoger</option>';
-                                                $padre_actual = -1;
-                                                foreach ($familias_priv as $familia) {
-                                                    if ($familia['padre'] == 0) {
-                                                        if ($familia['padre'] == $padre_actual) {
-                                                            echo '</optgroup>';
-                                                        } else {
-                                                            echo '<optgroup label="' . $familia['nombre'] . '" data-max-options="2">';
-                                                        }
-                                                        $padre_actual = $familia['id'];
-                                                    } else {
-                                                        echo '<option value="' . $familia['id'] . '" data-icon="' . $familia['icono'] . '" data-tokens="' . $familia['ticket'] . '">' . $familia['nombre'] . '</option>';
-                                                    }
-                                                }
-                                                echo '</select>';
-                                                echo '</td>';
-                                                echo '<td>';
-                                                echo '<select id="ingresos_picker" name="ingreso" class="form-control form-control-sm">';
-                                                echo '<option value="">Escoger</option>';
-                                                $padre_actual = -1;
-                                                foreach ($familias as $familia) {
-                                                    if ($familia['padre'] == 0) {
-                                                        if ($familia['padre'] == $padre_actual) {
-                                                            echo '</optgroup>';
-                                                        } else {
-                                                            echo '<optgroup label="' . $familia['nombre'] . '" data-max-options="2">';
-                                                        }
-                                                        $padre_actual = $familia['id'];
-                                                    } else {
-                                                        echo '<option value="' . $familia['id'] . '" data-icon="' . $familia['icono'] . '" data-tokens="' . $familia['ticket'] . '">' . $familia['nombre'] . '</option>';
-                                                    }
-                                                }
-                                                echo '</select>';
-                                                echo '</td>';
-                                                echo '<td><button class="btn-success btn-sm" type="submit">Guardar</button></td>';
-                                                echo '<td><button class="btn-danger btn-sm" type="submit" name="descartar">Descartar</button></td>';
-                                                echo '</tr>';
-                                                echo '</form>';
+                                                echo '</optgroup>';
+                                            } else {
+                                                echo '<option value="' . $f['id'] . '" data-icon="' . $f['icono'] . '" data-tokens="' . $f['ticket'] . '">' . $f['nombre'] . '</option>';
                                             }
-                                            ?>
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="tab-pane <?= (isset($_POST['importar_fichero']) ? 'active' : '') ?>" id="m_tabs_3_3" role="tabpanel">
-                            <?php if (count($tabla_importacion) == 0) { ?>
-                                <form class="m-form m-form--fit m-form--label-align-right" action="importar.php" method="POST" enctype="multipart/form-data">
-                                    <div class="form-group m-form__group row">
-                                        <div class="col-lg-5">
-                                            <label for="exampleSelect1">Tipo</label>
-                                            <select class="form-control m-input" name="tipo" id="exampleSelect1" required>
-                                                <option value="ABANCA">Abanca</option>
-                                            </select>
-                                        </div>
-                                        <div class="col-lg-5">
-                                            <label for="exampleSelect1">Fichero</label>
-                                            <input class="form-control m-input" type="file" name="fichero">
-                                        </div>
-                                        <div class="col-lg-2">
-                                            <label for="exampleSelect1">&nbsp;</label>
-                                            <button type="submit" name="importar_fichero" class="btn btn-success"><i class="fa fa-save"></i> Importar</button>
-                                        </div>
-                                    </div>
-                                </form>
-                                <?php if (isset($_POST['importar_fichero'])) { ?>
-                                    <h3 class="text-center mt-3">No se encontraron datos para importar</h3>
-                                <?php } ?>
-                            <?php } else { ?>
-                                <h3>Entradas importadas: <?= count($tabla_importacion) ?></h3>
-                                <table class="table">
-                                    <thead>
-                                        <tr>
-                                            <th>Fecha</th>
-                                            <th>Concepto</th>
-                                            <th>Importe</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        <?php foreach ($tabla_importacion as $fila) { ?>
-                                            <tr>
-                                                <td><?= $fila['fecha'] ?></td>
-                                                <td><?= $fila['concepto'] ?></td>
-                                                <td><?= $fila['importe'] ?></td>
-                                            </tr>
-                                        <?php } ?>
-                                    </tbody>
-                                </table>
-                            <?php } ?>
+                                        }
+                                        echo '</td>';
+                                        echo '<td>';
+                                        echo '<select id="ingresos_picker" name="gasto_priv" class="form-control form-control-sm">';
+                                        echo '<option value="">Escoger</option>';
+                                        foreach ($familias_priv as $f) {
+                                            $hijas = $db->select("familias_privadas", ["id", "nombre", "icono", "padre", "ticket"], ["padre" => $f['id'], "ORDER" => ["id" => "ASC"]]);
+                                            if(count($hijas) > 0) {
+                                                echo '<optgroup label="' . $f['nombre'] . '" data-max-options="2">';
+                                                foreach ($hijas as $key => $h) {
+                                                    echo '<option value="' . $h['id'] . '" data-icon="' . $h['icono'] . '" data-tokens="' . $h['ticket'] . '">' . $h['nombre'] . '</option>';
+                                                }
+                                                echo '</optgroup>';
+                                            } else {
+                                                echo '<option value="' . $f['id'] . '" data-icon="' . $f['icono'] . '" data-tokens="' . $f['ticket'] . '">' . $f['nombre'] . '</option>';
+                                            }
+                                        }
+                                        echo '</select>';
+                                        echo '</td>';
+                                        echo '<td>';
+                                        echo '<select id="ingresos_picker" name="ingreso" class="form-control form-control-sm">';
+                                        echo '<option value="">Escoger</option>';
+                                        foreach ($familias as $f) {
+                                            $hijas = $db->select("familias_ingresos", ["id", "nombre", "icono", "padre", "ticket"], ["padre" => $f['id'], "ORDER" => ["id" => "ASC"]]);
+                                            if(count($hijas) > 0) {
+                                                echo '<optgroup label="' . $f['nombre'] . '" data-max-options="2">';
+                                                foreach ($hijas as $key => $h) {
+                                                    echo '<option value="' . $h['id'] . '" data-icon="' . $h['icono'] . '" data-tokens="' . $h['ticket'] . '">' . $h['nombre'] . '</option>';
+                                                }
+                                                echo '</optgroup>';
+                                            } else {
+                                                echo '<option value="' . $f['id'] . '" data-icon="' . $f['icono'] . '" data-tokens="' . $f['ticket'] . '">' . $f['nombre'] . '</option>';
+                                            }
+                                        }
+                                        echo '</select>';
+                                        echo '</td>';
+                                        echo '<td><button class="btn-success btn-sm" type="submit">Guardar</button></td>';
+                                        echo '<td><button class="btn-danger btn-sm" type="submit" name="descartar">Descartar</button></td>';
+                                        echo '</tr>';
+                                        echo '</form>';
+                                    }
+                                    ?>
+                                </tbody>
+                            </table>
                         </div>
                     </div>
                 </div>
